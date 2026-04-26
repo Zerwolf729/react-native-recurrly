@@ -17,8 +17,8 @@ const SubscriptionCard = ({
   category,
   plan,
   renewalDate,
-  onPress,
   expanded,
+  onPress,
   paymentMethod,
   startDate,
   status,
@@ -36,93 +36,84 @@ const SubscriptionCard = ({
             <Text numberOfLines={1} className="sub-title">
               {name}
             </Text>
-
             <Text numberOfLines={1} ellipsizeMode="tail" className="sub-meta">
-              {category?.trim() || plan?.trim() || renewalDate
-                ? formatSubscriptionDateTime(renewalDate)
-                : ""}
+              {category?.trim() ||
+                plan?.trim() ||
+                (renewalDate ? formatSubscriptionDateTime(renewalDate) : "")}
             </Text>
           </View>
         </View>
 
         <View className="sub-price-box">
-          <Text className="sub-currency">
-            {formatCurrency(price, currency)}
-          </Text>
-
+          <Text className="sub-price">{formatCurrency(price, currency)}</Text>
           <Text className="sub-billing">{billing}</Text>
         </View>
       </View>
 
       {expanded && (
-        <View className="sub-body">
+        <View className="sub-bdy">
           <View className="sub-details">
             <View className="sub-row">
               <View className="sub-row-copy">
                 <Text className="sub-label">Payment:</Text>
-
                 <Text
                   className="sub-value"
                   numberOfLines={1}
                   ellipsizeMode="tail"
                 >
-                  {paymentMethod?.trim()}
+                  {paymentMethod?.trim() ?? "Not provided"}
                 </Text>
               </View>
             </View>
-
             <View className="sub-row">
               <View className="sub-row-copy">
                 <Text className="sub-label">Category:</Text>
-
                 <Text
                   className="sub-value"
                   numberOfLines={1}
                   ellipsizeMode="tail"
                 >
-                  {category?.trim() || plan?.trim()}
+                  {(category?.trim() || plan?.trim()) ?? "Not provided"}
                 </Text>
               </View>
             </View>
-
             <View className="sub-row">
               <View className="sub-row-copy">
                 <Text className="sub-label">Started:</Text>
-
                 <Text
                   className="sub-value"
                   numberOfLines={1}
                   ellipsizeMode="tail"
                 >
-                  {startDate ? formatSubscriptionDateTime(startDate) : ""}
+                  {startDate
+                    ? formatSubscriptionDateTime(startDate)
+                    : "Not provided"}
                 </Text>
               </View>
             </View>
-
             <View className="sub-row">
               <View className="sub-row-copy">
                 <Text className="sub-label">Renewal date:</Text>
-
                 <Text
                   className="sub-value"
                   numberOfLines={1}
                   ellipsizeMode="tail"
                 >
-                  {renewalDate ? formatSubscriptionDateTime(renewalDate) : ""}
+                  {renewalDate
+                    ? formatSubscriptionDateTime(renewalDate)
+                    : "Not provided"}
                 </Text>
               </View>
             </View>
-
             <View className="sub-row">
               <View className="sub-row-copy">
                 <Text className="sub-label">Status:</Text>
-
                 <Text
                   className="sub-value"
                   numberOfLines={1}
                   ellipsizeMode="tail"
                 >
-                  {status ? formatStatusLabel(status) : ""}
+                  {status ? formatStatusLabel(status) : "Not provided"}
                 </Text>
               </View>
             </View>
@@ -132,5 +123,4 @@ const SubscriptionCard = ({
     </Pressable>
   );
 };
-
 export default SubscriptionCard;

@@ -20,7 +20,11 @@ const UpcomingSubscriptionCard = ({
           </Text>
 
           <Text className="upcoming-meta" numberOfLines={1}>
-            {daysLeft > 1 ? `${daysLeft} days left` : "Last day"}
+            {daysLeft > 1
+              ? `${daysLeft} days left`
+              : daysLeft === 1
+                ? "Last day"
+                : "Due today"}
           </Text>
         </View>
       </View>
