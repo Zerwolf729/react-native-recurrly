@@ -1,4 +1,4 @@
-import { Text } from 'react-native'
+import { Text } from "react-native";
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 import { styled } from "nativewind";
 
@@ -9,7 +9,7 @@ const Subscriptions = () => {
     <SafeAreaView className="flex-1 bg-background p-5">
       <Text>subscriptions</Text>
     </SafeAreaView>
-  )
-}
+  );
+};
 
-export default Subscriptions
+export default Subscriptions;
