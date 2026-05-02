@@ -13,6 +13,8 @@ import clsx from "clsx";
 import { icons } from "@/constants/icons";
 import dayjs from "dayjs";
 import { posthog } from "@/src/config/posthog";
+import { Image } from "react-native";
+import { getSubscriptionIconKey } from "@/lib/getSubscriptionIconKey";
 
 interface CreateSubscriptionModalProps {
   visible: boolean;
@@ -55,11 +57,9 @@ const CreateSubscriptionModal = ({
   const [frequency, setFrequency] = useState<Frequency>("Monthly");
   const [category, setCategory] = useState<Category>("Other");
 
-  // Improved price validation
   const isValidPrice = () => {
     const trimmedPrice = price.trim();
     if (!trimmedPrice) return false;
-    // Strict numeric pattern check
     if (!/^\s*[+-]?(\d+(\.\d+)?|\.\d+)\s*$/.test(trimmedPrice)) return false;
     const numValue = Number(trimmedPrice);
     return Number.isFinite(numValue) && numValue > 0;
@@ -75,6 +75,8 @@ const CreateSubscriptionModal = ({
     const renewalDate =
       frequency === "Monthly" ? now.add(1, "month") : now.add(1, "year");
 
+    const iconKey = getSubscriptionIconKey(name);
+
     const newSubscription: Subscription = {
       id: `sub-${Date.now()}`,
       name: name.trim(),
@@ -85,7 +87,7 @@ const CreateSubscriptionModal = ({
       status: "active",
       startDate: now.toISOString(),
       renewalDate: renewalDate.toISOString(),
-      icon: icons.plus,
+      icon: icons[iconKey as keyof typeof icons],
       billing: frequency,
       color: CATEGORY_COLORS[category],
     };
