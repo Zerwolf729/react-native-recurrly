@@ -2,6 +2,14 @@ import { View, Text, Image } from "react-native";
 import React from "react";
 import { formatCurrency } from "@/lib/utils";
 
+interface UpcomingSubscriptionCardProps {
+  name: string;
+  price: number;
+  daysLeft: number;
+  icon: any; // atau ImageSourcePropType kalau mau strict
+  currency?: string;
+}
+
 const UpcomingSubscriptionCard = ({
   name,
   price,
@@ -23,8 +31,8 @@ const UpcomingSubscriptionCard = ({
             {daysLeft > 1
               ? `${daysLeft} days left`
               : daysLeft === 1
-                ? "Last day"
-                : "Due today"}
+              ? "1 day left"
+              : "Last day"}
           </Text>
         </View>
       </View>

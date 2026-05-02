@@ -1,20 +1,327 @@
-import { View, Text } from 'react-native'
-import React from 'react'
-import { Link } from 'expo-router'
+import {
+  View,
+  Text,
+  TextInput,
+  Pressable,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+} from "react-native";
+import { Link, useRouter, type Href } from "expo-router";
+import { useSignUp, useAuth } from "@clerk/expo";
+import { useState } from "react";
+import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
+import { styled } from "nativewind";
+import { usePostHog } from "posthog-react-native";
 
-const signUp = () => {
+const SafeAreaView = styled(RNSafeAreaView);
+
+const SignUp = () => {
+  const { signUp, errors, fetchStatus } = useSignUp();
+  const { isSignedIn } = useAuth();
+  const router = useRouter();
+  const posthog = usePostHog();
+
+  const [emailAddress, setEmailAddress] = useState("");
+  const [password, setPassword] = useState("");
+  const [code, setCode] = useState("");
+
+  const [emailTouched, setEmailTouched] = useState(false);
+  const [passwordTouched, setPasswordTouched] = useState(false);
+
+  const emailValid =
+    emailAddress.length === 0 ||
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress);
+  const passwordValid = password.length === 0 || password.length >= 8;
+  const formValid =
+    emailAddress.length > 0 && password.length >= 8 && emailValid;
+
+  const handleSubmit = async () => {
+    if (!formValid) return;
+
+    try {
+      const { error } = await signUp.password({
+        emailAddress,
+        password,
+      });
+
+      if (error) {
+        console.error(JSON.stringify(error, null, 2));
+
+        posthog.capture("user_sign_up_failed", {
+          error_message: error.message,
+        });
+
+        alert(error.message);
+        return;
+      }
+
+      await signUp.verifications.sendEmailCode();
+    } catch (err: any) {
+      console.error("Sign up error:", err);
+
+      posthog.capture("sign_up_exception", {
+        message: err?.message || "unknown",
+      });
+
+      alert(err?.message || "Something went wrong");
+    }
+  };
+
+  const handleVerify = async () => {
+    if (code.length !== 6) {
+      alert("Enter valid 6-digit code");
+      return;
+    }
+
+    try {
+      await signUp.verifications.verifyEmailCode({ code });
+
+      if (signUp.status === "complete") {
+        await signUp.finalize({
+          navigate: ({ session, decorateUrl }) => {
+            if (session?.currentTask) {
+              console.log(session.currentTask);
+              alert("Additional verification required.");
+              return;
+            }
+
+            posthog.capture("user_signed_up");
+
+            const url = decorateUrl("/(tabs)");
+
+            if (url.startsWith("http")) {
+              if (typeof window !== "undefined" && window.location) {
+                window.location.href = url;
+              } else {
+                router.replace("/(tabs)" as Href);
+              }
+            } else {
+              router.replace(url as Href);
+            }
+          },
+        });
+      } else {
+        console.error("Sign-up not complete:", signUp);
+
+        posthog.capture("signup_incomplete", {
+          status: signUp.status,
+        });
+
+        alert("Verification failed. Try again.");
+      }
+    } catch (err: any) {
+      console.error("Verification error:", err);
+
+      posthog.capture("verification_error", {
+        message: err?.message || "unknown",
+      });
+
+      alert(err?.message || "Invalid code");
+    }
+  };
+
+  if (signUp.status === "complete" || isSignedIn) {
+    return null;
+  }
+
+  if (
+    signUp.status === "missing_requirements" &&
+    signUp.unverifiedFields.includes("email_address") &&
+    signUp.missingFields.length === 0
+  ) {
+    return (
+      <SafeAreaView className="auth-safe-area">
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          className="auth-screen"
+        >
+          <ScrollView
+            className="auth-scroll"
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View className="auth-content">
+              <View className="auth-brand-block">
+                <View className="auth-logo-wrap">
+                  <View className="auth-logo-mark">
+                    <Text className="auth-logo-mark-text">R</Text>
+                  </View>
+                  <View>
+                    <Text className="auth-wordmark">Recurrly</Text>
+                    <Text className="auth-wordmark-sub">SUBSCRIPTIONS</Text>
+                  </View>
+                </View>
+                <Text className="auth-title">Verify your email</Text>
+                <Text className="auth-subtitle">
+                  We sent a verification code to {emailAddress}
+                </Text>
+              </View>
+
+              <View className="auth-card">
+                <View className="auth-form">
+                  <View className="auth-field">
+                    <Text className="auth-label">Verification Code</Text>
+                    <TextInput
+                      className="auth-input"
+                      value={code}
+                      placeholder="Enter 6-digit code"
+                      placeholderTextColor="rgba(0, 0, 0, 0.4)"
+                      onChangeText={setCode}
+                      keyboardType="number-pad"
+                      autoComplete="one-time-code"
+                      maxLength={6}
+                    />
+                    {errors.fields.code && (
+                      <Text className="auth-error">
+                        {errors.fields.code.message}
+                      </Text>
+                    )}
+                  </View>
+
+                  <Pressable
+                    className={`auth-button ${(!code || fetchStatus === "fetching") && "auth-button-disabled"}`}
+                    onPress={handleVerify}
+                    disabled={code.length !== 6 || fetchStatus === "fetching"}
+                  >
+                    <Text className="auth-button-text">
+                      {fetchStatus === "fetching"
+                        ? "Verifying..."
+                        : "Verify Email"}
+                    </Text>
+                  </Pressable>
+
+                  <Pressable
+                    className="auth-secondary-button"
+                    onPress={() => signUp.verifications.sendEmailCode()}
+                    disabled={fetchStatus === "fetching"}
+                  >
+                    <Text className="auth-secondary-button-text">
+                      Resend Code
+                    </Text>
+                  </Pressable>
+                </View>
+              </View>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    );
+  }
+
   return (
-    <View>
-      <Text>Sign Up</Text>
-      <Link href="/(auth)/sign-up">
-        Sign In
-      </Link>
+    <SafeAreaView className="auth-safe-area">
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        className="auth-screen"
+      >
+        <ScrollView
+          className="auth-scroll"
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View className="auth-content">
+            <View className="auth-brand-block">
+              <View className="auth-logo-wrap">
+                <View className="auth-logo-mark">
+                  <Text className="auth-logo-mark-text">R</Text>
+                </View>
+                <View>
+                  <Text className="auth-wordmark">Recurrly</Text>
+                  <Text className="auth-wordmark-sub">SUBSCRIPTIONS</Text>
+                </View>
+              </View>
+              <Text className="auth-title">Create your account</Text>
+              <Text className="auth-subtitle">
+                Start tracking your subscriptions and never miss a payment
+              </Text>
+            </View>
 
-      <Link href="/">
-        Home
-      </Link>
-    </View>
-  )
-}
+            <View className="auth-card">
+              <View className="auth-form">
+                <View className="auth-field">
+                  <Text className="auth-label">Email Address</Text>
+                  <TextInput
+                    className={`auth-input ${emailTouched && !emailValid && "auth-input-error"}`}
+                    autoCapitalize="none"
+                    value={emailAddress}
+                    placeholder="name@example.com"
+                    placeholderTextColor="rgba(0, 0, 0, 0.4)"
+                    onChangeText={setEmailAddress}
+                    onBlur={() => setEmailTouched(true)}
+                    keyboardType="email-address"
+                    autoComplete="email"
+                  />
+                  {emailTouched && !emailValid && (
+                    <Text className="auth-error">
+                      Please enter a valid email address
+                    </Text>
+                  )}
+                  {errors.fields.emailAddress && (
+                    <Text className="auth-error">
+                      {errors.fields.emailAddress.message}
+                    </Text>
+                  )}
+                </View>
 
-export default signUp
+                <View className="auth-field">
+                  <Text className="auth-label">Password</Text>
+                  <TextInput
+                    className={`auth-input ${passwordTouched && !passwordValid && "auth-input-error"}`}
+                    value={password}
+                    placeholder="Create a strong password"
+                    placeholderTextColor="rgba(0, 0, 0, 0.4)"
+                    secureTextEntry
+                    onChangeText={setPassword}
+                    onBlur={() => setPasswordTouched(true)}
+                    autoComplete="password-new"
+                  />
+                  {passwordTouched && !passwordValid && (
+                    <Text className="auth-error">
+                      Password must be at least 8 characters
+                    </Text>
+                  )}
+                  {errors.fields.password && (
+                    <Text className="auth-error">
+                      {errors.fields.password.message}
+                    </Text>
+                  )}
+                  {!passwordTouched && (
+                    <Text className="auth-helper">
+                      Minimum 8 characters required
+                    </Text>
+                  )}
+                </View>
+
+                <Pressable
+                  className={`auth-button ${(!formValid || fetchStatus === "fetching") && "auth-button-disabled"}`}
+                  onPress={handleSubmit}
+                  disabled={!formValid || fetchStatus === "fetching"}
+                >
+                  <Text className="auth-button-text">
+                    {fetchStatus === "fetching"
+                      ? "Creating Account..."
+                      : "Create Account"}
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+
+            <View className="auth-link-row">
+              <Text className="auth-link-copy">Already have an account?</Text>
+              <Link href="/(auth)/sign-in" asChild>
+                <Pressable>
+                  <Text className="auth-link">Sign In</Text>
+                </Pressable>
+              </Link>
+            </View>
+
+            <View nativeID="clerk-captcha" />
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+};
+
+export default SignUp;
