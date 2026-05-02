@@ -15,11 +15,9 @@ const Settings = () => {
     posthog.capture("user_signed_out");
     try {
       await signOut();
-      // Only reset analytics after successful sign-out
       posthog.reset();
     } catch (error) {
       console.error("Sign-out failed:", error);
-      // Don't reset analytics if sign-out failed
     }
   };
 
@@ -36,7 +34,6 @@ const Settings = () => {
         Settings
       </Text>
 
-      {/* User Profile Section */}
       <View className="auth-card mb-5">
         <View className="flex-row items-center gap-4 mb-4">
           <Image
@@ -56,7 +53,6 @@ const Settings = () => {
         </View>
       </View>
 
-      {/* Account Section */}
       <View className="auth-card mb-5">
         <Text className="text-base font-sans-semibold text-primary mb-3">
           Account
@@ -87,7 +83,6 @@ const Settings = () => {
         </View>
       </View>
 
-      {/* Sign Out Button */}
       <Pressable className="auth-button bg-destructive" onPress={handleSignOut}>
         <Text className="auth-button-text text-white">Sign Out</Text>
       </Pressable>

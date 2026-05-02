@@ -26,11 +26,9 @@ const SignUp = () => {
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
 
-  // Validation states
   const [emailTouched, setEmailTouched] = useState(false);
   const [passwordTouched, setPasswordTouched] = useState(false);
 
-  // Client-side validation
   const emailValid =
     emailAddress.length === 0 ||
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress);
@@ -41,69 +39,92 @@ const SignUp = () => {
   const handleSubmit = async () => {
     if (!formValid) return;
 
-    const { error } = await signUp.password({
-      emailAddress,
-      password,
-    });
-
-    if (error) {
-      console.error(JSON.stringify(error, null, 2));
-      posthog.capture("user_sign_up_failed", {
-        error_message: error.message,
+    try {
+      const { error } = await signUp.password({
+        emailAddress,
+        password,
       });
-      return;
-    }
 
-    // Send verification email
-    if (!error) {
+      if (error) {
+        console.error(JSON.stringify(error, null, 2));
+
+        posthog.capture("user_sign_up_failed", {
+          error_message: error.message,
+        });
+
+        alert(error.message);
+        return;
+      }
+
       await signUp.verifications.sendEmailCode();
+    } catch (err: any) {
+      console.error("Sign up error:", err);
+
+      posthog.capture("sign_up_exception", {
+        message: err?.message || "unknown",
+      });
+
+      alert(err?.message || "Something went wrong");
     }
   };
 
   const handleVerify = async () => {
-    await signUp.verifications.verifyEmailCode({
-      code,
-    });
+    if (code.length !== 6) {
+      alert("Enter valid 6-digit code");
+      return;
+    }
 
-    if (signUp.status === "complete") {
-      await signUp.finalize({
-        navigate: ({ session, decorateUrl }) => {
-          if (session?.currentTask) {
-            console.log(session?.currentTask);
-            return;
-          }
+    try {
+      await signUp.verifications.verifyEmailCode({ code });
 
-          posthog.identify(emailAddress, {
-            $set: { email: emailAddress },
-            $set_once: { sign_up_date: new Date().toISOString() },
-          });
-          posthog.capture("user_signed_up", { email: emailAddress });
-
-          const url = decorateUrl("/(tabs)");
-          if (url.startsWith("http")) {
-            // Only use window.location on web platform
-            if (typeof window !== "undefined" && window.location) {
-              window.location.href = url;
-            } else {
-              // On native, just use router navigation
-              router.replace("/(tabs)" as Href);
+      if (signUp.status === "complete") {
+        await signUp.finalize({
+          navigate: ({ session, decorateUrl }) => {
+            if (session?.currentTask) {
+              console.log(session.currentTask);
+              alert("Additional verification required.");
+              return;
             }
-          } else {
-            router.replace(url as Href);
-          }
-        },
+
+            posthog.capture("user_signed_up");
+
+            const url = decorateUrl("/(tabs)");
+
+            if (url.startsWith("http")) {
+              if (typeof window !== "undefined" && window.location) {
+                window.location.href = url;
+              } else {
+                router.replace("/(tabs)" as Href);
+              }
+            } else {
+              router.replace(url as Href);
+            }
+          },
+        });
+      } else {
+        console.error("Sign-up not complete:", signUp);
+
+        posthog.capture("signup_incomplete", {
+          status: signUp.status,
+        });
+
+        alert("Verification failed. Try again.");
+      }
+    } catch (err: any) {
+      console.error("Verification error:", err);
+
+      posthog.capture("verification_error", {
+        message: err?.message || "unknown",
       });
-    } else {
-      console.error("Sign-up attempt not complete:", signUp);
+
+      alert(err?.message || "Invalid code");
     }
   };
 
-  // Don't show anything if already signed in or sign-up is complete
   if (signUp.status === "complete" || isSignedIn) {
     return null;
   }
 
-  // Show verification screen if email needs verification
   if (
     signUp.status === "missing_requirements" &&
     signUp.unverifiedFields.includes("email_address") &&
@@ -121,7 +142,6 @@ const SignUp = () => {
             showsVerticalScrollIndicator={false}
           >
             <View className="auth-content">
-              {/* Branding */}
               <View className="auth-brand-block">
                 <View className="auth-logo-wrap">
                   <View className="auth-logo-mark">
@@ -138,7 +158,6 @@ const SignUp = () => {
                 </Text>
               </View>
 
-              {/* Verification Form */}
               <View className="auth-card">
                 <View className="auth-form">
                   <View className="auth-field">
@@ -163,7 +182,7 @@ const SignUp = () => {
                   <Pressable
                     className={`auth-button ${(!code || fetchStatus === "fetching") && "auth-button-disabled"}`}
                     onPress={handleVerify}
-                    disabled={!code || fetchStatus === "fetching"}
+                    disabled={code.length !== 6 || fetchStatus === "fetching"}
                   >
                     <Text className="auth-button-text">
                       {fetchStatus === "fetching"
@@ -190,7 +209,6 @@ const SignUp = () => {
     );
   }
 
-  // Main sign-up form
   return (
     <SafeAreaView className="auth-safe-area">
       <KeyboardAvoidingView
@@ -203,7 +221,6 @@ const SignUp = () => {
           showsVerticalScrollIndicator={false}
         >
           <View className="auth-content">
-            {/* Branding */}
             <View className="auth-brand-block">
               <View className="auth-logo-wrap">
                 <View className="auth-logo-mark">
@@ -220,7 +237,6 @@ const SignUp = () => {
               </Text>
             </View>
 
-            {/* Sign-Up Form */}
             <View className="auth-card">
               <View className="auth-form">
                 <View className="auth-field">
@@ -291,7 +307,6 @@ const SignUp = () => {
               </View>
             </View>
 
-            {/* Sign-In Link */}
             <View className="auth-link-row">
               <Text className="auth-link-copy">Already have an account?</Text>
               <Link href="/(auth)/sign-in" asChild>
@@ -301,7 +316,6 @@ const SignUp = () => {
               </Link>
             </View>
 
-            {/* Required for Clerk's bot protection */}
             <View nativeID="clerk-captcha" />
           </View>
         </ScrollView>

@@ -16,17 +16,23 @@ declare global {
     id: string;
     icon: ImageSourcePropType;
     name: string;
+
     plan?: string;
     category?: string;
     paymentMethod?: string;
+
     status?: string;
     startDate?: string;
+
     price: number;
     currency?: string;
+
     billing: string;
+
+    frequency: "Monthly" | "Yearly";
+
     renewalDate?: string;
     color?: string;
-    frequency: "Monthly" | "Yearly";
   }
 
   interface SubscriptionCardProps extends Omit<Subscription, "id"> {

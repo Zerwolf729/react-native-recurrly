@@ -94,13 +94,6 @@ const CreateSubscriptionModal = ({
 
     onSubmit(newSubscription);
 
-    posthog.capture("subscription_created", {
-      subscription_name: name.trim(),
-      subscription_price: priceValue,
-      subscription_frequency: frequency,
-      subscription_category: category,
-    });
-
     resetForm();
     onClose();
   };

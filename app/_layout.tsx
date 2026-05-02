@@ -28,10 +28,8 @@ function RootLayoutContent() {
 
   useEffect(() => {
     if (previousPathname.current !== pathname) {
-      // Filter route params to avoid leaking sensitive data
       const sanitizedParams = Object.keys(params).reduce(
         (acc, key) => {
-          // Only include specific safe params
           if (["id", "tab", "view"].includes(key)) {
             acc[key] = params[key];
           }
@@ -58,13 +56,11 @@ function RootLayoutContent() {
   });
 
   useEffect(() => {
-    // Hide splash only when both fonts and auth are loaded
     if (fontsLoaded && authLoaded) {
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded, authLoaded]);
 
-  // Don't render app until both are ready
   if (!fontsLoaded || !authLoaded) return null;
 
   return <Stack screenOptions={{ headerShown: false }} />;

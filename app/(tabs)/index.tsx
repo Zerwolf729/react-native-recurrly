@@ -8,13 +8,13 @@ import { icons } from "@/constants/icons";
 import { formatCurrency } from "@/lib/utils";
 import dayjs from "dayjs";
 import ListHeading from "@/components/ListHeading";
-import UpcomingSubscriptionCard from "@/components/UpcomingSubscriptionCard";
 import SubscriptionCard from "@/components/SubscriptionCard";
 import CreateSubscriptionModal from "@/components/CreateSubscriptionModal";
 import { useState, useMemo } from "react";
 import { useUser } from "@clerk/expo";
 import { usePostHog } from "posthog-react-native";
 import { useSubscriptionStore } from "@/lib/subscriptionStore";
+import UpcomingSubscriptionCard from "@/components/UpcomingSubscriptionCard";
 const SafeAreaView = styled(RNSafeAreaView);
 
 export default function App() {
@@ -26,7 +26,6 @@ export default function App() {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const { subscriptions, addSubscription } = useSubscriptionStore();
 
-  // Get upcoming subscriptions (active subscriptions with renewal date within next 7 days)
   const upcomingSubscriptions = useMemo(() => {
     const now = dayjs();
     const nextWeek = now.add(7, "days");
@@ -34,9 +33,14 @@ export default function App() {
       .filter(
         (sub) =>
           sub.status === "active" &&
+          sub.renewalDate &&
           dayjs(sub.renewalDate).isAfter(now) &&
           dayjs(sub.renewalDate).isBefore(nextWeek),
       )
+      .map((sub) => ({
+        ...sub,
+        daysLeft: dayjs(sub.renewalDate).diff(now, "day"),
+      }))
       .sort((a, b) => dayjs(a.renewalDate).diff(dayjs(b.renewalDate)));
   }, [subscriptions]);
 
@@ -60,11 +64,10 @@ export default function App() {
       subscription_name: newSubscription.name,
       subscription_price: newSubscription.price,
       subscription_frequency: newSubscription.frequency,
-      subscription_category: newSubscription.category,
+      subscription_category: newSubscription.category ?? "Other",
     });
   };
 
-  // Get user display name: firstName, fullName, or email
   const displayName =
     user?.firstName ||
     user?.fullName ||

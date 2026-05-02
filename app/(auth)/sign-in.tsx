@@ -25,11 +25,9 @@ const SignIn = () => {
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
 
-  // Validation states
   const [emailTouched, setEmailTouched] = useState(false);
   const [passwordTouched, setPasswordTouched] = useState(false);
 
-  // Client-side validation
   const emailValid =
     emailAddress.length === 0 ||
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress);
@@ -69,11 +67,9 @@ const SignIn = () => {
 
           const url = decorateUrl("/(tabs)");
           if (url.startsWith("http")) {
-            // Only use window.location on web platform
             if (typeof window !== "undefined" && window.location) {
               window.location.href = url;
             } else {
-              // On native, just use router navigation
               router.replace("/(tabs)" as Href);
             }
           } else {
@@ -82,16 +78,22 @@ const SignIn = () => {
         },
       });
     } else if (signIn.status === "needs_second_factor") {
-      // Handle MFA if needed (not implemented in this basic flow)
       console.log("MFA required");
     } else if (signIn.status === "needs_client_trust") {
-      // Send email code for client trust verification
       const emailCodeFactor = signIn.supportedSecondFactors.find(
         (factor) => factor.strategy === "email_code",
       );
 
       if (emailCodeFactor) {
         await signIn.mfa.sendEmailCode();
+      } else {
+        console.error("Email code factor not available");
+
+        posthog.capture("mfa_email_code_not_available", {
+          email: emailAddress,
+        });
+
+        alert("Verification method not available. Please try again.");
       }
     } else {
       console.error("Sign-in attempt not complete:", signIn);
@@ -109,7 +111,6 @@ const SignIn = () => {
             return;
           }
 
-          // Track successful sign-in after verification
           posthog.identify(emailAddress, {
             $set: { email: emailAddress },
             $set_once: { first_sign_in_date: new Date().toISOString() },
@@ -118,11 +119,9 @@ const SignIn = () => {
 
           const url = decorateUrl("/(tabs)");
           if (url.startsWith("http")) {
-            // Only use window.location on web platform
             if (typeof window !== "undefined" && window.location) {
               window.location.href = url;
             } else {
-              // On native, just use router navigation
               router.replace("/(tabs)" as Href);
             }
           } else {
@@ -135,7 +134,6 @@ const SignIn = () => {
     }
   };
 
-  // Show verification screen if client trust is needed
   if (signIn.status === "needs_client_trust") {
     return (
       <SafeAreaView className="auth-safe-area">
@@ -149,7 +147,6 @@ const SignIn = () => {
             showsVerticalScrollIndicator={false}
           >
             <View className="auth-content">
-              {/* Branding */}
               <View className="auth-brand-block">
                 <View className="auth-logo-wrap">
                   <View className="auth-logo-mark">
@@ -166,7 +163,6 @@ const SignIn = () => {
                 </Text>
               </View>
 
-              {/* Verification Form */}
               <View className="auth-card">
                 <View className="auth-form">
                   <View className="auth-field">
@@ -226,7 +222,6 @@ const SignIn = () => {
     );
   }
 
-  // Main sign-in form
   return (
     <SafeAreaView className="auth-safe-area">
       <KeyboardAvoidingView
@@ -239,7 +234,6 @@ const SignIn = () => {
           showsVerticalScrollIndicator={false}
         >
           <View className="auth-content">
-            {/* Branding */}
             <View className="auth-brand-block">
               <View className="auth-logo-wrap">
                 <View className="auth-logo-mark">
@@ -256,7 +250,6 @@ const SignIn = () => {
               </Text>
             </View>
 
-            {/* Sign-In Form */}
             <View className="auth-card">
               <View className="auth-form">
                 <View className="auth-field">
@@ -318,9 +311,10 @@ const SignIn = () => {
               </View>
             </View>
 
-            {/* Sign-Up Link */}
             <View className="auth-link-row">
-              <Text className="auth-link-copy">Don't have an account?</Text>
+              <Text className="auth-link-copy">
+                Don&apos;t have an account?
+              </Text>
               <Link href="/(auth)/sign-up" asChild>
                 <Pressable>
                   <Text className="auth-link">Create Account</Text>
