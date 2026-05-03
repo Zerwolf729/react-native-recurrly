@@ -3,8 +3,7 @@ import { FlatList, Image, Pressable, Text, View } from "react-native";
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 import { styled } from "nativewind";
 import images from "@/constants/images";
-import { HOME_BALANCE } from "@/constants/data";
-import { icons } from "@/constants/icons";
+import { HOME_BALANCE, UPCOMING_SUBSCRIPTIONS } from "@/constants/data";
 import { formatCurrency } from "@/lib/utils";
 import dayjs from "dayjs";
 import ListHeading from "@/components/ListHeading";
@@ -15,6 +14,9 @@ import { useUser } from "@clerk/expo";
 import { usePostHog } from "posthog-react-native";
 import { useSubscriptionStore } from "@/lib/subscriptionStore";
 import UpcomingSubscriptionCard from "@/components/UpcomingSubscriptionCard";
+import { getSubscriptionIconKey } from "@/lib/getSubscriptionIconKey";
+import { icons } from "@/constants/icons";
+
 const SafeAreaView = styled(RNSafeAreaView);
 
 export default function App() {
@@ -28,20 +30,27 @@ export default function App() {
 
   const upcomingSubscriptions = useMemo(() => {
     const now = dayjs();
-    const nextWeek = now.add(7, "days");
-    return subscriptions
+
+    const getDate = (item: any) =>
+      item.renewalDate
+        ? dayjs(item.renewalDate)
+        : dayjs().add(item.daysLeft, "day");
+
+    const userMapped = subscriptions
       .filter(
         (sub) =>
           sub.status === "active" &&
           sub.renewalDate &&
-          dayjs(sub.renewalDate).isAfter(now) &&
-          dayjs(sub.renewalDate).isBefore(nextWeek),
+          dayjs(sub.renewalDate).isAfter(now),
       )
       .map((sub) => ({
         ...sub,
         daysLeft: dayjs(sub.renewalDate).diff(now, "day"),
-      }))
-      .sort((a, b) => dayjs(a.renewalDate).diff(dayjs(b.renewalDate)));
+      }));
+
+    return [...UPCOMING_SUBSCRIPTIONS, ...userMapped].sort((a, b) =>
+      getDate(a).diff(getDate(b)),
+    );
   }, [subscriptions]);
 
   const handleSubscriptionPress = (item: Subscription) => {
@@ -63,7 +72,7 @@ export default function App() {
     posthog.capture("subscription_created", {
       subscription_name: newSubscription.name,
       subscription_price: newSubscription.price,
-      subscription_frequency: newSubscription.frequency,
+      subscription_billing: newSubscription.billing,
       subscription_category: newSubscription.category ?? "Other",
     });
   };
@@ -145,7 +154,7 @@ export default function App() {
         ListEmptyComponent={
           <Text className="home-empty-state">No subscriptions yet.</Text>
         }
-        contentContainerClassName="pb-30"
+        contentContainerClassName="pb-20"
       />
 
       <CreateSubscriptionModal

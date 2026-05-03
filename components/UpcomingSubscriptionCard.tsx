@@ -6,7 +6,7 @@ interface UpcomingSubscriptionCardProps {
   name: string;
   price: number;
   daysLeft: number;
-  icon: any; // atau ImageSourcePropType kalau mau strict
+  icon: any;
   currency?: string;
 }
 
