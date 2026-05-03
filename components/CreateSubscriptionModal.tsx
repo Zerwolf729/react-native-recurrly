@@ -12,7 +12,6 @@ import React, { useState } from "react";
 import clsx from "clsx";
 import { icons } from "@/constants/icons";
 import dayjs from "dayjs";
-import { usePostHog } from "posthog-react-native";
 import { getSubscriptionIconKey } from "@/lib/getSubscriptionIconKey";
 
 interface CreateSubscriptionModalProps {
@@ -54,7 +53,6 @@ const CreateSubscriptionModal = ({
   onClose,
   onSubmit,
 }: CreateSubscriptionModalProps) => {
-  const posthog = usePostHog();
 
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
@@ -93,18 +91,11 @@ const CreateSubscriptionModal = ({
       renewalDate: renewalDate.toISOString(),
       icon: icons[iconKey],
       billing: frequency,
-
       color: CATEGORY_COLORS[category],
     };
 
     onSubmit(newSubscription);
 
-    posthog.capture("subscription_created", {
-      subscription_name: name.trim(),
-      subscription_price: priceValue,
-      subscription_frequency: frequency,
-      subscription_category: category,
-    });
     resetForm();
     onClose();
   };

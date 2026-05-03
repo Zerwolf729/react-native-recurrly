@@ -15,7 +15,9 @@ export default function Insights() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const totalExpenses = useMemo(() => {
-    return subscriptions.reduce((acc, sub) => acc + sub.price, 0);
+    return subscriptions
+      .filter((sub) => sub.status === "active")
+      .reduce((acc, sub) => acc + sub.price, 0);
   }, [subscriptions]);
 
   const currentMonth = dayjs().format("MMMM YYYY");
